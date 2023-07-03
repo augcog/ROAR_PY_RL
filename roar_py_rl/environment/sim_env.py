@@ -18,7 +18,6 @@ class RoarRLSimEnv(RoarRLEnv):
             world: Optional[RoarPyWorld] = None, 
             render_mode="rgb_array"
         ) -> None:
-        assert location_sensor in self
         super().__init__(actor, manuverable_waypoints, world, render_mode)
         self.location_sensor = location_sensor
         self.velocimeter_sensor = velocimeter_sensor
@@ -26,6 +25,13 @@ class RoarRLSimEnv(RoarRLEnv):
         self.collision_threshold = collision_threshold
         self.lookahead_distance = lookahead_distance
     
+    def reset_vehicle(self) -> None:
+        return NotImplementedError
+    
+    @property
+    def sensors_to_update(self) -> List[Any]:
+        return [self.location_sensor, self.velocimeter_sensor, self.collision_sensor]
+
     def get_reward(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> SupportsFloat:
         collision_impulse = self.collision_sensor.get_last_observation().impulse_normal
         collision_impulse_norm = np.linalg.norm(collision_impulse)
