@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 from stable_baselines3 import SAC
+from stable_baselines3.ppo.ppo import PPO
 import roar_py_rl_carla
 import roar_py_carla
 import roar_py_interface
@@ -11,15 +12,15 @@ import asyncio
 import nest_asyncio
 
 async def initialize_env():
-    carla_client = carla.Client('localhost', 3000)
+    carla_client = carla.Client('localhost', 2000)
     carla_client.set_timeout(15.0)
     roar_py_instance = roar_py_carla.RoarPyCarlaInstance(carla_client)
     world = roar_py_instance.world
     world.set_control_steps(0.05, 0.01)
     world.set_asynchronous(False)
     vehicle = world.spawn_vehicle(
-        "vehicle.tesla.model3",
-        *world.spawn_points[0],
+        "vehicle.dallara.dallara",
+        *world.spawn_points[1],
         True,
         "vehicle"
     )
@@ -91,7 +92,7 @@ def main():
         progress_bar=True,
     )
 
-    
+
 
 if __name__ == "__main__":
     nest_asyncio.apply()
