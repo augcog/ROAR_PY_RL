@@ -15,7 +15,7 @@ class FlattenActionWrapper(gym.ActionWrapper):
 
     def action(self, action: Any) -> Any:
         return gym.spaces.unflatten(self.env.action_space, action)
-
+    
 class RoarRLCarlaSimEnv(RoarRLSimEnv):
     def reset_vehicle(self) -> None:
         # assert isinstance(self.roar_py_actor, RoarPyCarlaVehicle)

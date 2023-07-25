@@ -26,6 +26,10 @@ class RoarRLEnv(gym.Env):
         self.visualizer = RoarPyVisualizer(actor)
         self.observation_space = self.roar_py_actor.get_gym_observation_spec()
         self.action_space = self.roar_py_actor.get_action_spec()
+        
+        self.steps = 0 # record current steps number
+        self.terminal = False
+        self.reward_gain = 0 # 
 
     @property
     def sensors_to_update(self) -> List[RoarPySensor]:
@@ -41,6 +45,7 @@ class RoarRLEnv(gym.Env):
         raise NotImplementedError
 
     def step(self, action: Any) -> Tuple[Any, SupportsFloat, bool, bool, Dict[str, Any]]:
+        self.steps += 1
         action_task_async = self.roar_py_actor.apply_action(action)
         asyncio.get_event_loop().run_until_complete(
             action_task_async
