@@ -20,8 +20,8 @@ from env_util import SimplifyCarlaActionFilter
 
 run_fps= 32
 training_params = dict(
-    learning_rate = 0.00003,  # be smaller 2.5e-4
-    n_steps = 256 * run_fps, #1024
+    learning_rate = 1e-5,  # be smaller 2.5e-4
+    #n_steps = 256 * run_fps, #1024
     batch_size=256,  # mini_batch_size = 256?
     # n_epochs=10,
     gamma=0.97,  # rec range .9 - .99 0.999997
@@ -50,9 +50,13 @@ async def initialize_env():
     world = roar_py_instance.world
     world.set_control_steps(0.05, 0.01)
     world.set_asynchronous(False)
+
+    spawn_point = world.spawn_points[0]
+
     vehicle = world.spawn_vehicle(
         "vehicle.dallara.dallara",
-        *world.spawn_points[1],
+        spawn_point[0] + np.array([0, 0, 2.0]),
+        spawn_point[1],
         True,
         "vehicle"
     )
@@ -108,11 +112,11 @@ def find_latest_model(root_path: Path) -> Optional[Path]:
     """
         Find the path of latest model if exists.
     """
-    logs_path = (root_path / "logs")
-    if logs_path.exists() is False:
+    logs_path = (os.path.join(root_path, "logs"))
+    if os.path.exists(logs_path) is False:
         print(f"No previous record found in {logs_path}")
         return None
-    paths = sorted(logs_path.iterdir(), key=os.path.getmtime)
+    paths = sorted(os.listdir(logs_path), key=os.path.getmtime)
     paths_dict: Dict[int, Path] = {
         int(path.name.split("_")[2]): path for path in paths
     }
@@ -129,7 +133,7 @@ def main():
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True
-    )
+    )  
     env = asyncio.run(initialize_env())
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)

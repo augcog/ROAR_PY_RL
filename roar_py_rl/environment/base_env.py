@@ -25,7 +25,6 @@ class RoarRLEnv(gym.Env):
         self.manuverable_waypoints = manuverable_waypoints
         self.render_mode = render_mode
         self.visualizer = RoarPyVisualizer(actor)
-        self.observation_space = self.roar_py_actor.get_gym_observation_spec()
         self.action_space = self.roar_py_actor.get_action_spec()
         self.additional_sensors : List[RoarPySensor] = []
         
@@ -63,6 +62,7 @@ class RoarRLEnv(gym.Env):
         ret = self.roar_py_actor.get_last_gym_observation().copy()
         for additional_sensor in self.additional_sensors:
             ret[additional_sensor.name] = additional_sensor.get_last_gym_observation()
+        return ret
 
     def step(self, action: Any) -> Tuple[Any, SupportsFloat, bool, bool, Dict[str, Any]]:
         self.steps += 1

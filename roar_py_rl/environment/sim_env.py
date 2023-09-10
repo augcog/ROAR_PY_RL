@@ -96,7 +96,7 @@ class RoarRLSimEnv(RoarRLEnv):
                 traced_negative_dist_idx = 0
                 i_trace = 0
                 while traced_negative_dist_idx < len(dists_negative):
-                    traced_waypoint_begin_idx = (i_trace + self.manuverable_waypoints) % len(self.manuverable_waypoints)
+                    traced_waypoint_begin_idx = (i_trace + len(self.manuverable_waypoints)) % len(self.manuverable_waypoints)
                     traced_waypoint_end_idx = (traced_waypoint_begin_idx + 1) % len(self.manuverable_waypoints)
                     traced_waypoint_begin = self.manuverable_waypoints[traced_waypoint_begin_idx]
                     traced_waypoint_end = self.manuverable_waypoints[traced_waypoint_end_idx]
@@ -141,7 +141,7 @@ class RoarRLSimEnv(RoarRLEnv):
                 traced_positive_dist_idx = 0
                 i_trace = 0
                 while traced_positive_dist_idx < len(dists_positive):
-                    traced_waypoint_begin_idx = (i_trace + self.manuverable_waypoints) % len(self.manuverable_waypoints)
+                    traced_waypoint_begin_idx = (i_trace + len(self.manuverable_waypoints)) % len(self.manuverable_waypoints)
                     traced_waypoint_end_idx = (traced_waypoint_begin_idx + 1) % len(self.manuverable_waypoints)
                     traced_waypoint_begin = self.manuverable_waypoints[traced_waypoint_begin_idx]
                     traced_waypoint_end = self.manuverable_waypoints[traced_waypoint_end_idx]
@@ -171,7 +171,7 @@ class RoarRLSimEnv(RoarRLEnv):
                                 location[:2],
                                 yaw
                             ), 
-                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3], yaw), 
+                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3] - yaw), 
                             [interpolated_waypoint.lane_width]
                         ])
                         traced_positive_dist_idx += 1
@@ -187,7 +187,7 @@ class RoarRLSimEnv(RoarRLEnv):
     def search_waypoint(self, location : np.ndarray) -> int:
         smallest_waypoint_dist = float("inf")
         smallest_waypoint_idx = 0
-        for i in range(self.current_waypoint_idx - 10, self.current_waypoint_idx - 10 + len(self.manuverable_waypoints)):
+        for i in range(self._current_waypoint_idx - 10, self._current_waypoint_idx - 10 + len(self.manuverable_waypoints)):
             waypoint_idx = i % len(self.manuverable_waypoints)
             next_waypoint_idx = (waypoint_idx + 1) % len(self.manuverable_waypoints)
             waypoint = self.manuverable_waypoints[waypoint_idx]
