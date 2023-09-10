@@ -4,6 +4,7 @@ import numpy as np
 from typing import Any, List, Optional, SupportsFloat, Tuple, Dict
 import asyncio
 from .reward_util import near_quadratic_bound
+import copy
 
 class RoarRLEnv(gym.Env):
     metadata = {
@@ -26,10 +27,18 @@ class RoarRLEnv(gym.Env):
         self.visualizer = RoarPyVisualizer(actor)
         self.observation_space = self.roar_py_actor.get_gym_observation_spec()
         self.action_space = self.roar_py_actor.get_action_spec()
+        self.additional_sensors : List[RoarPySensor] = []
         
         self.steps = 0 # record current steps number
         self.terminal = False
         self.reward_gain = 0 # 
+
+    @property
+    def observation_space(self) -> gym.Space:
+        spec : gym.spaces.Dict = copy.deepcopy(self.roar_py_actor.get_gym_observation_spec())
+        for additional_sensor in self.additional_sensors:
+            spec[additional_sensor.name] = additional_sensor.get_gym_observation_spec()
+        return spec
 
     @property
     def sensors_to_update(self) -> List[RoarPySensor]:
@@ -43,6 +52,17 @@ class RoarRLEnv(gym.Env):
 
     def is_truncated(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> bool:
         raise NotImplementedError
+    
+    def _step(self, action : Any) -> None:
+        pass
+
+    def _reset(self) -> None:
+        pass
+    
+    def observation(self) -> Dict[str, Any]:
+        ret = self.roar_py_actor.get_last_gym_observation().copy()
+        for additional_sensor in self.additional_sensors:
+            ret[additional_sensor.name] = additional_sensor.get_last_gym_observation()
 
     def step(self, action: Any) -> Tuple[Any, SupportsFloat, bool, bool, Dict[str, Any]]:
         self.steps += 1
@@ -58,13 +78,16 @@ class RoarRLEnv(gym.Env):
 
         observation_task_async = asyncio.gather(
             self.roar_py_actor.receive_observation(),
-            *[sensor.receive_observation() for sensor in self.sensors_to_update]
+            *[sensor.receive_observation() for sensor in self.sensors_to_update],
+            *[sensor.receive_observation() for sensor in self.additional_sensors]
         )
         asyncio.get_event_loop().run_until_complete(
             observation_task_async
         )
 
-        observation = self.roar_py_actor.get_last_gym_observation()
+        self._step(action)
+
+        observation = self.observation()
 
         info_dict = {}
         reward = self.get_reward(observation, action, info_dict)
@@ -85,17 +108,20 @@ class RoarRLEnv(gym.Env):
 
         observation_task_async = asyncio.gather(
             self.roar_py_actor.receive_observation(),
-            *[sensor.receive_observation() for sensor in self.sensors_to_update]
+            *[sensor.receive_observation() for sensor in self.sensors_to_update],
+            *[sensor.receive_observation() for sensor in self.additional_sensors]
         )
         asyncio.get_event_loop().run_until_complete(
             observation_task_async
         )
 
+        self._reset()
+
         info_dict = {}
         if self.roar_py_world is not None:
             info_dict["world_time"] = self.roar_py_world.last_tick_elapsed_seconds
 
-        observation = self.roar_py_actor.get_last_gym_observation()
+        observation = self.observation()
         super().reset(seed=seed, options=options)
         return observation, info_dict
 

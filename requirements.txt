@@ -5,3 +5,4 @@ wandb>=0.15.4
 stable-baselines3[extra]>=2.0.0
 tensorboard>=2.13.0
 nest_asyncio
+shapely>=2.0.1

@@ -18,27 +18,27 @@ from networks import Atari_PPO_Adapted_CNN
 
 run_fps= 32
 training_params = dict(
-                        learning_rate = 0.00003,  # be smaller 2.5e-4
-                        n_steps = 256 * run_fps, #1024
-                        batch_size=256,  # mini_batch_size = 256?
-                        # n_epochs=10,
-                        gamma=0.97,  # rec range .9 - .99 0.999997
-                        ent_coef=.00,  # rec range .0 - .01
-                        # gae_lambda=0.95,
-                        # clip_range_vf=None,
-                        # vf_coef=0.5,
-                        # max_grad_norm=0.5,
-                        # use_sde=True,
-                        # sde_sample_freq=misc_params["run_fps"]/2,
-                        # target_kl=None,
-                        # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
-                        # create_eval_env=False,
-                        # policy_kwargs=None,
-                        verbose=1,
-                        seed=1,
-                        device=th.device('cuda' if th.cuda.is_available() else 'cpu'),
-                        # _init_setup_model=True,
-                        )
+    learning_rate = 0.00003,  # be smaller 2.5e-4
+    n_steps = 256 * run_fps, #1024
+    batch_size=256,  # mini_batch_size = 256?
+    # n_epochs=10,
+    gamma=0.97,  # rec range .9 - .99 0.999997
+    ent_coef=.00,  # rec range .0 - .01
+    # gae_lambda=0.95,
+    # clip_range_vf=None,
+    # vf_coef=0.5,
+    # max_grad_norm=0.5,
+    # use_sde=True,
+    # sde_sample_freq=misc_params["run_fps"]/2,
+    # target_kl=None,
+    # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
+    # create_eval_env=False,
+    # policy_kwargs=None,
+    verbose=1,
+    seed=1,
+    device=th.device('cuda' if th.cuda.is_available() else 'cpu'),
+    # _init_setup_model=True,
+)
 
 async def initialize_env():
     carla_client = carla.Client('localhost', 2000)
@@ -121,11 +121,11 @@ def main():
     )
     env = asyncio.run(initialize_env())
     policy_kwargs = dict(
-                            # features_extractor_class = AutoRacingNet,
-                            features_extractor_class = Atari_PPO_Adapted_CNN,
-                            features_extractor_kwargs=dict(features_dim=256),
-                            use_sde=True
-                        )
+        # features_extractor_class = AutoRacingNet,
+        features_extractor_class = Atari_PPO_Adapted_CNN,
+        features_extractor_kwargs=dict(features_dim=256),
+        use_sde=True
+    )
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)
     
