@@ -1,4 +1,5 @@
 import gymnasium as gym
+from gymnasium.core import Env
 import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.ppo.ppo import PPO
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Optional, Dict
 import torch as th
 from networks import Atari_PPO_Adapted_CNN
+from typing import Dict, SupportsFloat, Union
 
 run_fps= 32
 training_params = dict(
@@ -39,6 +41,35 @@ training_params = dict(
     device=th.device('cuda' if th.cuda.is_available() else 'cpu'),
     # _init_setup_model=True,
 )
+
+class ROARActionFilter(gym.ActionWrapper):
+    def __init__(self, env: Env):
+        super().__init__(env)
+        self._action_space = gym.spaces.Dict({
+            "throttle": gym.spaces.Box(-1.0, 1.0, (1,), np.float32),
+            "steer": gym.spaces.Box(-1.0, 1.0, (1,), np.float32)
+        })
+    def action(self, action: Dict[str, Union[SupportsFloat, float]]) -> Dict[str, Union[SupportsFloat, float]]:
+        """Returns a modified action before :meth:`env.step` is called.
+
+        Args:
+            action: The original :meth:`step` actions
+
+        Returns:
+            The modified actions
+        """
+        # action = {
+        #     "throttle": [-1.0, 1.0],
+        #     "steer": [-1.0, 1.0]
+        # }
+        real_action = {
+            "throttle": np.clip(action["throttle"], 0.0, 1.0),
+            "brake": np.clip(-action["throttle"], 0.0, 1.0),
+            "steer": action["steer"],
+            "hand_brake": 0.0,
+            "reverse": 0.0
+        }
+        return real_action
 
 async def initialize_env():
     carla_client = carla.Client('localhost', 2000)
@@ -67,7 +98,11 @@ async def initialize_env():
         5.0,
         name="occupancy_map"
     )
+    
+    #TODO: Attach next waypoint to observation
     velocimeter_sensor = vehicle.attach_velocimeter_sensor("velocimeter")
+    local_velocimeter_sensor = vehicle.attach_local_velocimeter_sensor("local_velocimeter")
+
     location_sensor = vehicle.attach_location_in_world_sensor("location")
     camera = vehicle.attach_camera_sensor(
         roar_py_interface.RoarPyCameraSensorDataRGB, # Specify what kind of data you want to receive
@@ -86,8 +121,9 @@ async def initialize_env():
         collision_sensor,
         world = world
     )
-    env = roar_py_rl_carla.FlattenActionWrapper(env)
-    env = gym.wrappers.FilterObservation(env, ["occupancy_map", "velocimeter"])
+    env = ROARActionFilter(env)
+    env = roar_py_rl_carla.FlattenActionWrapper(env) # TODO: Filter out some actions
+    env = gym.wrappers.FilterObservation(env, ["occupancy_map", "local_velocimeter"])
     env = gym.wrappers.FlattenObservation(env)
     env = gym.wrappers.TimeLimit(env, 600)
     env = gym.wrappers.RecordVideo(env, "videos/")
