@@ -15,8 +15,8 @@ import os
 from pathlib import Path
 from typing import Optional, Dict
 import torch as th
-from networks import Atari_PPO_Adapted_CNN
 from typing import Dict, SupportsFloat, Union
+from env_util import SimplifyCarlaActionFilter
 
 run_fps= 32
 training_params = dict(
@@ -25,13 +25,14 @@ training_params = dict(
     batch_size=256,  # mini_batch_size = 256?
     # n_epochs=10,
     gamma=0.97,  # rec range .9 - .99 0.999997
-    ent_coef=.00,  # rec range .0 - .01
+    ent_coef="auto",
+    target_entropy=-6.0,
     # gae_lambda=0.95,
     # clip_range_vf=None,
     # vf_coef=0.5,
     # max_grad_norm=0.5,
-    # use_sde=True,
-    # sde_sample_freq=misc_params["run_fps"]/2,
+    use_sde=True,
+    sde_sample_freq=run_fps//2,
     # target_kl=None,
     # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
     # create_eval_env=False,
@@ -41,35 +42,6 @@ training_params = dict(
     device=th.device('cuda' if th.cuda.is_available() else 'cpu'),
     # _init_setup_model=True,
 )
-
-class ROARActionFilter(gym.ActionWrapper):
-    def __init__(self, env: Env):
-        super().__init__(env)
-        self._action_space = gym.spaces.Dict({
-            "throttle": gym.spaces.Box(-1.0, 1.0, (1,), np.float32),
-            "steer": gym.spaces.Box(-1.0, 1.0, (1,), np.float32)
-        })
-    def action(self, action: Dict[str, Union[SupportsFloat, float]]) -> Dict[str, Union[SupportsFloat, float]]:
-        """Returns a modified action before :meth:`env.step` is called.
-
-        Args:
-            action: The original :meth:`step` actions
-
-        Returns:
-            The modified actions
-        """
-        # action = {
-        #     "throttle": [-1.0, 1.0],
-        #     "steer": [-1.0, 1.0]
-        # }
-        real_action = {
-            "throttle": np.clip(action["throttle"], 0.0, 1.0),
-            "brake": np.clip(-action["throttle"], 0.0, 1.0),
-            "steer": action["steer"],
-            "hand_brake": 0.0,
-            "reverse": 0.0
-        }
-        return real_action
 
 async def initialize_env():
     carla_client = carla.Client('localhost', 2000)
@@ -91,19 +63,21 @@ async def initialize_env():
         name="collision_sensor"
     )
     assert collision_sensor is not None, "Failed to attach collision sensor"
-    occupancy_map_sensor = vehicle.attach_occupancy_map_sensor(
-        84,
-        84,
-        5.0,
-        5.0,
-        name="occupancy_map"
-    )
+    # occupancy_map_sensor = vehicle.attach_occupancy_map_sensor(
+    #     84,
+    #     84,
+    #     5.0,
+    #     5.0,
+    #     name="occupancy_map"
+    # )
     
     #TODO: Attach next waypoint to observation
     velocimeter_sensor = vehicle.attach_velocimeter_sensor("velocimeter")
     local_velocimeter_sensor = vehicle.attach_local_velocimeter_sensor("local_velocimeter")
 
     location_sensor = vehicle.attach_location_in_world_sensor("location")
+    rpy_sensor = vehicle.attach_roll_pitch_yaw_sensor("roll_pitch_yaw")
+    gyroscope_sensor = vehicle.attach_gyroscope_sensor("gyroscope")
     camera = vehicle.attach_camera_sensor(
         roar_py_interface.RoarPyCameraSensorDataRGB, # Specify what kind of data you want to receive
         np.array([-2.0 * vehicle.bounding_box.extent[0], 0.0, 3.0 * vehicle.bounding_box.extent[2]]), # relative position
@@ -117,13 +91,14 @@ async def initialize_env():
         vehicle,
         world.maneuverable_waypoints,
         location_sensor,
+        rpy_sensor,
         velocimeter_sensor,
         collision_sensor,
         world = world
     )
-    env = ROARActionFilter(env)
-    env = roar_py_rl_carla.FlattenActionWrapper(env) # TODO: Filter out some actions
-    env = gym.wrappers.FilterObservation(env, ["occupancy_map", "local_velocimeter"])
+    env = SimplifyCarlaActionFilter(env)
+    env = roar_py_rl_carla.FlattenActionWrapper(env)
+    env = gym.wrappers.FilterObservation(env, ["gyroscope", "waypoints_information", "local_velocimeter"])
     env = gym.wrappers.FlattenObservation(env)
     env = gym.wrappers.TimeLimit(env, 600)
     env = gym.wrappers.RecordVideo(env, "videos/")
@@ -156,48 +131,38 @@ def main():
         save_code=True
     )
     env = asyncio.run(initialize_env())
-    policy_kwargs = dict(
-        # features_extractor_class = AutoRacingNet,
-        features_extractor_class = Atari_PPO_Adapted_CNN,
-        features_extractor_kwargs=dict(features_dim=256),
-        use_sde=True
-    )
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)
     
     if latest_model_path is None:
         # create new models
         model = SAC(
-                    "MlpPolicy",
-                    env,
-                    policy_kwargs = policy_kwargs,
-                    optimize_memory_usage=True,
-                    replay_buffer_kwargs={"handle_timeout_termination": False},
-                    **training_params
-                )
+            "MlpPolicy",
+            env,
+            optimize_memory_usage=True,
+            replay_buffer_kwargs={"handle_timeout_termination": False},
+            **training_params
+        )
     else:
         # Load the model
         print(latest_model_path)
         model = SAC.load(
-                            latest_model_path,
-                            env=env,
-                            policy_kwargs = policy_kwargs,
-                            optimize_memory_usage=True,
-                            replay_buffer_kwargs={"handle_timeout_termination": False}
-                            **training_params
-                        )
+            latest_model_path,
+            env=env,
+            optimize_memory_usage=True,
+            replay_buffer_kwargs={"handle_timeout_termination": False}
+            **training_params
+        )
 
     model.learn(
-        total_timesteps=10_000,
+        total_timesteps=30_000,
         callback=WandbCallback(
-            gradient_save_freq=5000,
+            gradient_save_freq=2000,
             model_save_path=f"models/{wandb_run.name}",
             verbose=2,
         ),
         progress_bar=True,
     )
-
-
 
 if __name__ == "__main__":
     nest_asyncio.apply()

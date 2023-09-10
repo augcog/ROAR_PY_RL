@@ -1,5 +1,5 @@
 from typing import List, Optional
-from roar_py_interface import RoarPyActor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyCustomLambdaSensor, RoarPyCustomLambdaSensorData
+from roar_py_interface import RoarPyActor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyRollPitchYawSensor
 from .base_env import RoarRLEnv
 from typing import Any, Dict, SupportsFloat, Tuple, Optional, Set
 import gymnasium as gym
@@ -17,12 +17,28 @@ def distance_to_waypoint_polygon(
     polygon = Polygon([p1, p2, p4, p3])
     return polygon.distance(Point(point))
 
+def global_to_local(
+    global_point: np.ndarray,
+    local_origin: np.ndarray,
+    local_yaw: float
+) -> np.ndarray:
+    delta_global = global_point - local_origin
+    delta_local = np.array([
+        np.cos(local_yaw) * delta_global[0] + np.sin(local_yaw) * delta_global[1],
+        -np.sin(local_yaw) * delta_global[0] + np.cos(local_yaw) * delta_global[1]
+    ])
+    return delta_local
+
+def normalize_rad(rad : float) -> float:
+    return (rad + np.pi) % (2 * np.pi) - np.pi
+
 class RoarRLSimEnv(RoarRLEnv):
     def __init__(
             self,
             actor: RoarPyActor,
             manuverable_waypoints: List[RoarPyWaypoint],
             location_sensor : RoarPyLocationInWorldSensor,
+            roll_pitch_yaw_sensor : RoarPyRollPitchYawSensor,
             velocimeter_sensor : RoarPyVelocimeterSensor,
             collision_sensor : RoarPyCollisionSensor,
             collision_threshold : float = 30.0,
@@ -32,6 +48,7 @@ class RoarRLSimEnv(RoarRLEnv):
         ) -> None:
         super().__init__(actor, manuverable_waypoints, world, render_mode)
         self.location_sensor = location_sensor
+        self.roll_pitch_yaw_sensor = roll_pitch_yaw_sensor
         self.velocimeter_sensor = velocimeter_sensor
         self.collision_sensor = collision_sensor
         self.collision_threshold = collision_threshold
@@ -65,6 +82,10 @@ class RoarRLSimEnv(RoarRLEnv):
 
     def observation(self) -> Dict[str, Any]:
         obs = super().observation()
+
+        location = self.location_sensor.get_last_gym_observation()
+        yaw = self.roll_pitch_yaw_sensor.get_last_gym_observation()[2]
+
         if len(self.waypoint_information_distances) > 0:
             waypoint_info = {}
             dists_negative = sorted([dist for dist in self.waypoint_information_distances if dist < 0], reverse=True)
@@ -100,7 +121,13 @@ class RoarRLSimEnv(RoarRLEnv):
                         )
 
                         waypoint_info[f"waypoint_{current_negative_dist}"] = np.concatenate([
-                            interpolated_waypoint.location[:2], interpolated_waypoint.roll_pitch_yaw[2:3], [interpolated_waypoint.lane_width]
+                            global_to_local(
+                                interpolated_waypoint.location[:2],
+                                location[:2],
+                                yaw
+                            ), 
+                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3] - yaw), 
+                            [interpolated_waypoint.lane_width]
                         ])
                         traced_negative_dist_idx += 1
                         if traced_negative_dist_idx >= len(dists_negative):
@@ -139,7 +166,13 @@ class RoarRLSimEnv(RoarRLEnv):
                         )
 
                         waypoint_info[f"waypoint_{current_positive_dist}"] = np.concatenate([
-                            interpolated_waypoint.location[:2], interpolated_waypoint.roll_pitch_yaw[2:3], [interpolated_waypoint.lane_width]
+                            global_to_local(
+                                interpolated_waypoint.location[:2],
+                                location[:2],
+                                yaw
+                            ), 
+                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3], yaw), 
+                            [interpolated_waypoint.lane_width]
                         ])
                         traced_positive_dist_idx += 1
                         if traced_positive_dist_idx >= len(dists_positive):
@@ -189,7 +222,7 @@ class RoarRLSimEnv(RoarRLEnv):
 
     @property
     def sensors_to_update(self) -> List[Any]:
-        return [self.location_sensor, self.velocimeter_sensor, self.collision_sensor]
+        return [self.location_sensor, self.roll_pitch_yaw_sensor, self.velocimeter_sensor, self.collision_sensor]
 
     def get_reward(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> SupportsFloat:
         collision_impulse = self.collision_sensor.get_last_observation().impulse_normal
