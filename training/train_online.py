@@ -3,10 +3,6 @@ from gymnasium.core import Env
 import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.ppo.ppo import PPO
-import roar_py_rl_carla
-import roar_py_carla
-import roar_py_interface
-import carla
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import asyncio
@@ -16,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Dict
 import torch as th
 from typing import Dict, SupportsFloat, Union
-from env_util import SimplifyCarlaActionFilter
+from env_util import initialize_roar_env
 
 run_fps= 32
 training_params = dict(
@@ -42,71 +38,6 @@ training_params = dict(
     device=th.device('cuda' if th.cuda.is_available() else 'cpu'),
     # _init_setup_model=True,
 )
-
-async def initialize_env():
-    carla_client = carla.Client('localhost', 2000)
-    carla_client.set_timeout(15.0)
-    roar_py_instance = roar_py_carla.RoarPyCarlaInstance(carla_client)
-    world = roar_py_instance.world
-    world.set_control_steps(0.05, 0.01)
-    world.set_asynchronous(False)
-
-    spawn_point = world.spawn_points[0]
-
-    vehicle = world.spawn_vehicle(
-        "vehicle.dallara.dallara",
-        spawn_point[0] + np.array([0, 0, 2.0]),
-        spawn_point[1],
-        True,
-        "vehicle"
-    )
-    assert vehicle is not None, "Failed to spawn vehicle"
-    collision_sensor = vehicle.attach_collision_sensor(
-        np.zeros(3),
-        np.zeros(3),
-        name="collision_sensor"
-    )
-    assert collision_sensor is not None, "Failed to attach collision sensor"
-    # occupancy_map_sensor = vehicle.attach_occupancy_map_sensor(
-    #     84,
-    #     84,
-    #     5.0,
-    #     5.0,
-    #     name="occupancy_map"
-    # )
-    
-    #TODO: Attach next waypoint to observation
-    velocimeter_sensor = vehicle.attach_velocimeter_sensor("velocimeter")
-    local_velocimeter_sensor = vehicle.attach_local_velocimeter_sensor("local_velocimeter")
-
-    location_sensor = vehicle.attach_location_in_world_sensor("location")
-    rpy_sensor = vehicle.attach_roll_pitch_yaw_sensor("roll_pitch_yaw")
-    gyroscope_sensor = vehicle.attach_gyroscope_sensor("gyroscope")
-    camera = vehicle.attach_camera_sensor(
-        roar_py_interface.RoarPyCameraSensorDataRGB, # Specify what kind of data you want to receive
-        np.array([-2.0 * vehicle.bounding_box.extent[0], 0.0, 3.0 * vehicle.bounding_box.extent[2]]), # relative position
-        np.array([0, 10/180.0*np.pi, 0]), # relative rotation
-        image_width=400,
-        image_height=200
-    )
-    await world.step()
-    await vehicle.receive_observation()
-    env = roar_py_rl_carla.RoarRLCarlaSimEnv(
-        vehicle,
-        world.maneuverable_waypoints,
-        location_sensor,
-        rpy_sensor,
-        velocimeter_sensor,
-        collision_sensor,
-        world = world
-    )
-    env = SimplifyCarlaActionFilter(env)
-    env = roar_py_rl_carla.FlattenActionWrapper(env)
-    env = gym.wrappers.FilterObservation(env, ["gyroscope", "waypoints_information", "local_velocimeter"])
-    env = gym.wrappers.FlattenObservation(env)
-    env = gym.wrappers.TimeLimit(env, 600)
-    env = gym.wrappers.RecordVideo(env, "videos/")
-    return env
 
 def find_latest_model(root_path: Path) -> Optional[Path]:
     """
@@ -134,7 +65,7 @@ def main():
         monitor_gym=True,
         save_code=True
     )  
-    env = asyncio.run(initialize_env())
+    env = asyncio.run(initialize_roar_env())
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)
     

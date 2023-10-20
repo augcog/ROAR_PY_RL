@@ -1,5 +1,5 @@
 from typing import List, Optional
-from roar_py_interface import RoarPyActor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyRollPitchYawSensor
+from roar_py_interface import RoarPyActor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyRollPitchYawSensor, RoarPyWaypointsTracker, RoarPyWaypointsProjection
 from .base_env import RoarRLEnv
 from typing import Any, Dict, SupportsFloat, Tuple, Optional, Set
 import gymnasium as gym
@@ -53,16 +53,10 @@ class RoarRLSimEnv(RoarRLEnv):
         self.collision_sensor = collision_sensor
         self.collision_threshold = collision_threshold
         self.waypoint_information_distances = waypoint_information_distances
-        self._current_waypoint_idx = 0
-        self._travelled_dist = 0.0
+        
+        self.waypoints_tracer = RoarPyWaypointsTracker(manuverable_waypoints)
+        self._traced_projection : RoarPyWaypointsProjection = RoarPyWaypointsProjection(0,0.0)
         self._delta_distance_travelled = 0.0
-
-        self._dists_between_waypoints : List[float] = []
-        for i in range(len(self.manuverable_waypoints)):
-            waypoint = self.manuverable_waypoints[i]
-            next_waypoint = self.manuverable_waypoints[(i+1)%len(self.manuverable_waypoints)]
-            self._dists_between_waypoints.append(np.linalg.norm(waypoint.location - next_waypoint.location))
-        self._total_dist = np.sum(self._dists_between_waypoints)
 
     @property
     def observation_space(self) -> gym.Space:
@@ -80,142 +74,25 @@ class RoarRLSimEnv(RoarRLEnv):
         
         return space
 
-    def observation(self) -> Dict[str, Any]:
-        obs = super().observation()
+    def observation(self, info_dict : Dict[str, Any]) -> Dict[str, Any]:
+        obs = super().observation(info_dict)
 
         location = self.location_sensor.get_last_gym_observation()
         yaw = self.roll_pitch_yaw_sensor.get_last_gym_observation()[2]
 
         if len(self.waypoint_information_distances) > 0:
             waypoint_info = {}
-            dists_negative = sorted([dist for dist in self.waypoint_information_distances if dist < 0], reverse=True)
-            dists_positive = sorted([dist for dist in self.waypoint_information_distances if dist >= 0])
-            if len(dists_negative) > 0:
-                traced_dist = 0.0
-                traced_waypoint_begin_idx = self._current_waypoint_idx
-                traced_negative_dist_idx = 0
-                i_trace = 0
-                while traced_negative_dist_idx < len(dists_negative):
-                    traced_waypoint_begin_idx = (i_trace + len(self.manuverable_waypoints)) % len(self.manuverable_waypoints)
-                    traced_waypoint_end_idx = (traced_waypoint_begin_idx + 1) % len(self.manuverable_waypoints)
-                    traced_waypoint_begin = self.manuverable_waypoints[traced_waypoint_begin_idx]
-                    traced_waypoint_end = self.manuverable_waypoints[traced_waypoint_end_idx]
-                    current_dist_segment = self._dists_between_waypoints[traced_waypoint_begin_idx] if i_trace != 0 else self._travelled_dist - np.sum(self._dists_between_waypoints[:self._current_waypoint_idx])
-                    if i_trace == 0:
-                        traced_waypoint_end = RoarPyWaypoint.interpolate(
-                            traced_waypoint_begin,
-                            traced_waypoint_end,
-                            current_dist_segment / self._dists_between_waypoints[traced_waypoint_begin_idx]
-                        )
+            for trace_dist in self.waypoint_information_distances:
+                traced_projection = self.waypoints_tracer.trace_forward_projection(self._traced_projection, trace_dist)
+                traced_projection_wp = self.waypoints_tracer.get_interpolated_waypoint(traced_projection)
+                waypoint_info[f"waypoint_{trace_dist}"] = np.concatenate([
+                    global_to_local(traced_projection_wp.location, location, yaw),
+                    traced_projection_wp.roll_pitch_yaw,
+                    np.array([traced_projection_wp.lane_width])
+                ])
 
-                    while traced_dist + current_dist_segment >= -dists_negative[traced_negative_dist_idx]:
-                        current_negative_dist = dists_negative[traced_negative_dist_idx]
-                        segment_reverse_portion = -current_negative_dist - traced_dist
-                        segment_reverse_portion /= current_dist_segment
-                        segment_reverse_portion = np.clip(segment_reverse_portion, 0.0, 1.0)
-                        
-                        interpolated_waypoint = RoarPyWaypoint.interpolate(
-                            traced_waypoint_end,
-                            traced_waypoint_begin,
-                            segment_reverse_portion
-                        )
-
-                        waypoint_info[f"waypoint_{current_negative_dist}"] = np.concatenate([
-                            global_to_local(
-                                interpolated_waypoint.location[:2],
-                                location[:2],
-                                yaw
-                            ), 
-                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3] - yaw), 
-                            [interpolated_waypoint.lane_width]
-                        ])
-                        traced_negative_dist_idx += 1
-                        if traced_negative_dist_idx >= len(dists_negative):
-                            break
-
-                    traced_dist += current_dist_segment
-                    i_trace += 1
-            if len(dists_positive) > 0:
-                traced_dist = 0.0
-                traced_waypoint_begin_idx = self._current_waypoint_idx
-                traced_positive_dist_idx = 0
-                i_trace = 0
-                while traced_positive_dist_idx < len(dists_positive):
-                    traced_waypoint_begin_idx = (i_trace + len(self.manuverable_waypoints)) % len(self.manuverable_waypoints)
-                    traced_waypoint_end_idx = (traced_waypoint_begin_idx + 1) % len(self.manuverable_waypoints)
-                    traced_waypoint_begin = self.manuverable_waypoints[traced_waypoint_begin_idx]
-                    traced_waypoint_end = self.manuverable_waypoints[traced_waypoint_end_idx]
-                    current_dist_segment = self._dists_between_waypoints[traced_waypoint_begin_idx] if i_trace != 0 else np.sum(self._dists_between_waypoints[:self._current_waypoint_idx + 1]) - self._travelled_dist
-                    if i_trace == 0:
-                        traced_waypoint_begin = RoarPyWaypoint.interpolate(
-                            traced_waypoint_end,
-                            traced_waypoint_begin,
-                            current_dist_segment / self._dists_between_waypoints[traced_waypoint_begin_idx]
-                        )
-
-                    while traced_dist + current_dist_segment >= dists_positive[traced_positive_dist_idx]:
-                        current_positive_dist = dists_positive[traced_positive_dist_idx]
-                        segment_portion = current_positive_dist - traced_dist
-                        segment_portion /= current_dist_segment
-                        segment_portion = np.clip(segment_portion, 0.0, 1.0)
-                        
-                        interpolated_waypoint = RoarPyWaypoint.interpolate(
-                            traced_waypoint_begin,
-                            traced_waypoint_end,
-                            segment_portion
-                        )
-
-                        waypoint_info[f"waypoint_{current_positive_dist}"] = np.concatenate([
-                            global_to_local(
-                                interpolated_waypoint.location[:2],
-                                location[:2],
-                                yaw
-                            ), 
-                            normalize_rad(interpolated_waypoint.roll_pitch_yaw[2:3] - yaw), 
-                            [interpolated_waypoint.lane_width]
-                        ])
-                        traced_positive_dist_idx += 1
-                        if traced_positive_dist_idx >= len(dists_positive):
-                            break
-
-                    traced_dist += current_dist_segment
-                    i_trace += 1
             obs["waypoints_information"] = waypoint_info
         return obs
-
-    
-    def search_waypoint(self, location : np.ndarray) -> int:
-        smallest_waypoint_dist = float("inf")
-        smallest_waypoint_idx = 0
-        for i in range(self._current_waypoint_idx - 10, self._current_waypoint_idx - 10 + len(self.manuverable_waypoints)):
-            waypoint_idx = i % len(self.manuverable_waypoints)
-            next_waypoint_idx = (waypoint_idx + 1) % len(self.manuverable_waypoints)
-            waypoint = self.manuverable_waypoints[waypoint_idx]
-            next_waypoint = self.manuverable_waypoints[next_waypoint_idx]
-            dist = distance_to_waypoint_polygon(waypoint, next_waypoint, location)
-            if dist == 0.0:
-                return waypoint_idx
-            if dist < smallest_waypoint_dist:
-                smallest_waypoint_dist = dist
-                smallest_waypoint_idx = waypoint_idx
-        return smallest_waypoint_idx
-
-    def update_travelled_dist(self, location : np.ndarray) -> float:
-        new_waypoint_idx = self.search_waypoint(location)
-        new_dist = np.sum(self._dists_between_waypoints[:new_waypoint_idx])
-        new_start_waypoint, new_end_waypoint = self.manuverable_waypoints[new_waypoint_idx], self.manuverable_waypoints[(new_waypoint_idx+1)%len(self.manuverable_waypoints)]
-        
-        if np.linalg.norm(new_start_waypoint.location - location) > 1e-6:
-            delta_new_segment = (new_end_waypoint.location - new_start_waypoint.location)
-            length_new_segment = np.linalg.norm(delta_new_segment)
-            unit_delta_segment = delta_new_segment / length_new_segment
-            new_dist += np.clip(np.inner(location - new_start_waypoint.location, unit_delta_segment), 0.0, length_new_segment)
-        
-        delta_dist = self._total_dist + new_dist - self._travelled_dist
-        delta_dist %= self._total_dist
-        self._travelled_dist = new_dist
-        self._current_waypoint_idx = new_waypoint_idx
-        return delta_dist
 
     def reset_vehicle(self) -> None:
         return NotImplementedError
@@ -238,13 +115,18 @@ class RoarRLSimEnv(RoarRLEnv):
         else:
             return normalized_rew + 1
     
+    def _perform_waypoint_trace(self, location: Optional[np.ndarray] = None) -> None:
+        if location is None:
+            location = self.location_sensor.get_last_gym_observation()
+        _last_traced_projection = self._traced_projection
+        self._traced_projection = self.waypoints_tracer.trace_point(location, _last_traced_projection.waypoint_idx)
+        self._delta_distance_travelled = self.waypoints_tracer.delta_distance_projection(_last_traced_projection, self._traced_projection)
+
     def _step(self, action: Any) -> None:
-        location = self.location_sensor.get_last_gym_observation()
-        self._delta_distance_travelled = self.update_travelled_dist(location)
+        self._perform_waypoint_trace()
 
     def _reset(self) -> None:
-        location = self.location_sensor.get_last_gym_observation()
-        self.update_travelled_dist(location)
+        self._perform_waypoint_trace()
         self._delta_distance_travelled = 0.0
 
     def is_terminated(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> bool:

@@ -27,10 +27,6 @@ class RoarRLEnv(gym.Env):
         self.visualizer = RoarPyVisualizer(actor)
         self.action_space = self.roar_py_actor.get_action_spec()
         self.additional_sensors : List[RoarPySensor] = []
-        
-        self.steps = 0 # record current steps number
-        self.terminal = False
-        self.reward_gain = 0 # 
 
     @property
     def observation_space(self) -> gym.Space:
@@ -58,14 +54,13 @@ class RoarRLEnv(gym.Env):
     def _reset(self) -> None:
         pass
     
-    def observation(self) -> Dict[str, Any]:
+    def observation(self, info_dict : Dict[str, Any]) -> Dict[str, Any]:
         ret = self.roar_py_actor.get_last_gym_observation().copy()
         for additional_sensor in self.additional_sensors:
             ret[additional_sensor.name] = additional_sensor.get_last_gym_observation()
         return ret
 
     def step(self, action: Any) -> Tuple[Any, SupportsFloat, bool, bool, Dict[str, Any]]:
-        self.steps += 1
         action_task_async = self.roar_py_actor.apply_action(action)
         asyncio.get_event_loop().run_until_complete(
             action_task_async
@@ -87,10 +82,12 @@ class RoarRLEnv(gym.Env):
 
         self._step(action)
 
-        observation = self.observation()
-
         info_dict = {}
+        observation = self.observation(info_dict)
+
         reward = self.get_reward(observation, action, info_dict)
+        info_dict["reward_step"] = reward
+
         terminated, truncated = self.is_terminated(observation, action, info_dict), self.is_truncated(observation, action, info_dict)
         if self.roar_py_world is not None:
             info_dict["world_time"] = self.roar_py_world.last_tick_elapsed_seconds
@@ -121,7 +118,7 @@ class RoarRLEnv(gym.Env):
         if self.roar_py_world is not None:
             info_dict["world_time"] = self.roar_py_world.last_tick_elapsed_seconds
 
-        observation = self.observation()
+        observation = self.observation(info_dict)
         super().reset(seed=seed, options=options)
         return observation, info_dict
 
