@@ -3,6 +3,8 @@ from gymnasium.core import Env
 import numpy as np
 from stable_baselines3 import SAC
 from stable_baselines3.ppo.ppo import PPO
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import asyncio
@@ -57,6 +59,16 @@ def find_latest_model(root_path: Path) -> Optional[Path]:
     latest_model_file_path: Optional[Path] = paths_dict[max(paths_dict.keys())]
     return latest_model_file_path
 
+def get_env(wandb_run) -> gym.Env:
+    env = asyncio.run(initialize_roar_env())
+    env = gym.wrappers.FlattenObservation(env)
+    env = FlattenActionWrapper(env)
+    env = gym.wrappers.TimeLimit(env, max_episode_steps=run_fps*30)
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}")
+    env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
+    return env
+
 def main():
     wandb_run = wandb.init(
         project="Major_Map_Debug_ROAR_PY",
@@ -65,11 +77,9 @@ def main():
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True
-    )  
-    env = asyncio.run(initialize_roar_env())
-    env = gym.wrappers.FlattenObservation(env)
-    env = FlattenActionWrapper(env)
-    env = gym.wrappers.TimeLimit(env, max_episode_steps=run_fps*30)
+    ) 
+    
+    env = get_env(wandb_run)
 
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)
