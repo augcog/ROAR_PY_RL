@@ -87,7 +87,7 @@ class RoarRLSimEnv(RoarRLEnv):
                 traced_projection_wp = self.waypoints_tracer.get_interpolated_waypoint(traced_projection)
                 waypoint_info[f"waypoint_{trace_dist}"] = np.concatenate([
                     global_to_local(traced_projection_wp.location, location, yaw),
-                    traced_projection_wp.roll_pitch_yaw,
+                    np.array([traced_projection_wp.roll_pitch_yaw[2]]),
                     np.array([traced_projection_wp.lane_width])
                 ])
 

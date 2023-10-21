@@ -13,6 +13,7 @@ from typing import Optional, Dict
 import torch as th
 from typing import Dict, SupportsFloat, Union
 from env_util import initialize_roar_env
+from roar_py_rl_carla import FlattenActionWrapper
 
 run_fps= 32
 training_params = dict(
@@ -66,6 +67,10 @@ def main():
         save_code=True
     )  
     env = asyncio.run(initialize_roar_env())
+    env = gym.wrappers.FlattenObservation(env)
+    env = FlattenActionWrapper(env)
+    env = gym.wrappers.TimeLimit(env, max_episode_steps=run_fps*30)
+
     models_path = f"models/{wandb_run.name}"
     latest_model_path = find_latest_model(models_path)
     
