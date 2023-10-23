@@ -5,7 +5,7 @@ import nest_asyncio
 import asyncio
 import gymnasium.utils.play as gym_play
 
-throttle_speed = 0.4
+throttle_speed = 0.8
 
 keys_to_action = {
     "w" : {

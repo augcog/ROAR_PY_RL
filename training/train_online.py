@@ -65,7 +65,7 @@ def get_env(wandb_run) -> gym.Env:
     env = FlattenActionWrapper(env)
     env = gym.wrappers.TimeLimit(env, max_episode_steps=run_fps*30)
     env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}")
+    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % 5000 == 0)
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
     return env
 

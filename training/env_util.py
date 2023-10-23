@@ -47,11 +47,13 @@ async def initialize_roar_env(carla_host : str = "localhost", carla_port : int =
     world = roar_py_instance.world
     world.set_control_steps(control_timestep, physics_timestep)
     world.set_asynchronous(False)
+    await world.step()
+    roar_py_instance.clean_actors_not_registered(["vehicle.*", "sensor.*"])
 
     spawn_point = world.spawn_points[0]
 
     vehicle = world.spawn_vehicle(
-        "vehicle.dallara.dallara",
+        "vehicle.tesla.model3",
         spawn_point[0] + np.array([0, 0, 2.0]),
         spawn_point[1],
         True,

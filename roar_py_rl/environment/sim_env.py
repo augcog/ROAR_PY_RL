@@ -125,6 +125,9 @@ class RoarRLSimEnv(RoarRLEnv):
         self._delta_distance_travelled = self.waypoints_tracer.delta_distance_projection(_last_traced_projection, self._traced_projection)
 
     def _step(self, action: Any) -> None:
+        if np.linalg.norm(self.collision_sensor.get_last_observation().impulse_normal) > 0:
+            print("Collision detected!", self.collision_sensor.get_last_observation().impulse_normal)
+
         self._perform_waypoint_trace()
 
     def _reset(self) -> None:
