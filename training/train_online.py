@@ -17,7 +17,7 @@ from typing import Dict, SupportsFloat, Union
 from env_util import initialize_roar_env
 from roar_py_rl_carla import FlattenActionWrapper
 
-run_fps= 32
+run_fps= 20
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
     #n_steps = 256 * run_fps, #1024
@@ -25,13 +25,13 @@ training_params = dict(
     # n_epochs=10,
     gamma=0.97,  # rec range .9 - .99 0.999997
     ent_coef="auto",
-    target_entropy=-6.0,
+    target_entropy=-10.0,
     # gae_lambda=0.95,
     # clip_range_vf=None,
     # vf_coef=0.5,
     # max_grad_norm=0.5,
     use_sde=True,
-    sde_sample_freq=run_fps//2,
+    sde_sample_freq=run_fps,
     # target_kl=None,
     # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
     # create_eval_env=False,
@@ -105,7 +105,7 @@ def main():
         )
 
     model.learn(
-        total_timesteps=30_000,
+        total_timesteps=500_000,
         callback=WandbCallback(
             gradient_save_freq=2000,
             model_save_path=f"models/{wandb_run.name}",

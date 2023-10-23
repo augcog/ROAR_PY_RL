@@ -110,11 +110,12 @@ class RoarRLSimEnv(RoarRLEnv):
             penalty = (penalty ** 1.4) / self.collision_threshold
             return -penalty
 
-        normalized_rew = self._delta_distance_travelled * 25.0
-        if normalized_rew < 0:
-            return np.exp(normalized_rew) # Gaussian-like penalty for going backwards
-        else:
-            return normalized_rew + 1.0
+        normalized_rew = self._delta_distance_travelled * 20.0
+        # if normalized_rew < 0:
+        #     return np.exp(normalized_rew) # Gaussian-like penalty for going backwards
+        # else:
+        #     return normalized_rew + 1
+        return normalized_rew
     
     def _perform_waypoint_trace(self, location: Optional[np.ndarray] = None) -> None:
         if location is None:
