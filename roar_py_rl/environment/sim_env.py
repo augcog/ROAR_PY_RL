@@ -103,7 +103,7 @@ class RoarRLSimEnv(RoarRLEnv):
         return [self.location_sensor, self.roll_pitch_yaw_sensor, self.velocimeter_sensor, self.collision_sensor]
 
     def get_reward(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> SupportsFloat:
-        collision_impulse = self.collision_sensor.get_last_observation().impulse_normal
+        collision_impulse : np.ndarray = self.collision_sensor.get_last_gym_observation()
         collision_impulse_norm = np.linalg.norm(collision_impulse)
         if collision_impulse_norm >= self.collision_threshold:
             penalty = collision_impulse_norm - self.collision_threshold
@@ -125,8 +125,8 @@ class RoarRLSimEnv(RoarRLEnv):
         self._delta_distance_travelled = self.waypoints_tracer.delta_distance_projection(_last_traced_projection, self._traced_projection)
 
     def _step(self, action: Any) -> None:
-        if np.linalg.norm(self.collision_sensor.get_last_observation().impulse_normal) > 0:
-            print("Collision detected!", self.collision_sensor.get_last_observation().impulse_normal)
+        if np.linalg.norm(self.collision_sensor.get_last_gym_observation()) > 0:
+            print("Collision detected!", self.collision_sensor.get_last_observation().impulse_normals)
 
         self._perform_waypoint_trace()
 
@@ -135,7 +135,7 @@ class RoarRLSimEnv(RoarRLEnv):
         self._delta_distance_travelled = 0.0
 
     def is_terminated(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> bool:
-        collision_impulse = self.collision_sensor.get_last_observation().impulse_normal
+        collision_impulse : np.ndarray = self.collision_sensor.get_last_gym_observation()
         collision_impulse_norm = np.linalg.norm(collision_impulse)
         if collision_impulse_norm >= self.collision_threshold:
             return True

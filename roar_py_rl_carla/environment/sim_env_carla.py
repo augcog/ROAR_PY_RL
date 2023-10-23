@@ -41,6 +41,6 @@ class RoarRLCarlaSimEnv(RoarRLSimEnv):
                 await self.roar_py_world.step()
         
         asyncio.get_event_loop().run_until_complete(
-            wait_for_world_ticks(10, 30)
+            wait_for_world_ticks(5, 30)
         )
         

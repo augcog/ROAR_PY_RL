@@ -17,10 +17,11 @@ from typing import Dict, SupportsFloat, Union
 from env_util import initialize_roar_env
 from roar_py_rl_carla import FlattenActionWrapper
 
-run_fps= 20
+RUN_FPS= 20
+SUBSTEPS_PER_STEP = 2
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
-    #n_steps = 256 * run_fps, #1024
+    #n_steps = 256 * RUN_FPS, #1024
     batch_size=256,  # mini_batch_size = 256?
     # n_epochs=10,
     gamma=0.97,  # rec range .9 - .99 0.999997
@@ -31,7 +32,7 @@ training_params = dict(
     # vf_coef=0.5,
     # max_grad_norm=0.5,
     use_sde=True,
-    sde_sample_freq=run_fps,
+    sde_sample_freq=RUN_FPS * 2,
     # target_kl=None,
     # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
     # create_eval_env=False,
@@ -60,10 +61,10 @@ def find_latest_model(root_path: Path) -> Optional[Path]:
     return latest_model_file_path
 
 def get_env(wandb_run) -> gym.Env:
-    env = asyncio.run(initialize_roar_env())
+    env = asyncio.run(initialize_roar_env(control_timestep=1.0/RUN_FPS, physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP)))
     env = gym.wrappers.FlattenObservation(env)
     env = FlattenActionWrapper(env)
-    env = gym.wrappers.TimeLimit(env, max_episode_steps=run_fps*30)
+    env = gym.wrappers.TimeLimit(env, max_episode_steps=RUN_FPS*30)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % 5000 == 0)
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
