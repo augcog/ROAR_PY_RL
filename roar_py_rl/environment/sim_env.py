@@ -30,7 +30,7 @@ def global_to_local(
     return delta_local
 
 def normalize_rad(rad : float) -> float:
-    return (rad + np.pi) % (2 * np.pi) - np.pi
+    return (rad % (2 * np.pi) + 3 * np.pi) % (2 * np.pi) - np.pi
 
 class RoarRLSimEnv(RoarRLEnv):
     def __init__(
@@ -87,7 +87,7 @@ class RoarRLSimEnv(RoarRLEnv):
                 traced_projection_wp = self.waypoints_tracer.get_interpolated_waypoint(traced_projection)
                 waypoint_info[f"waypoint_{trace_dist}"] = np.concatenate([
                     global_to_local(traced_projection_wp.location, location, yaw),
-                    np.array([traced_projection_wp.roll_pitch_yaw[2]]),
+                    np.array([normalize_rad(traced_projection_wp.roll_pitch_yaw[2] - yaw)]),
                     np.array([traced_projection_wp.lane_width])
                 ])
 
