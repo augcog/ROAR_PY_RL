@@ -16,6 +16,7 @@ import torch as th
 from typing import Dict, SupportsFloat, Union
 from env_util import initialize_roar_env
 from roar_py_rl_carla import FlattenActionWrapper
+from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, CallbackList, BaseCallback
 
 RUN_FPS= 20
 SUBSTEPS_PER_STEP = 2
@@ -51,13 +52,13 @@ def find_latest_model(root_path: Path) -> Optional[Path]:
     if os.path.exists(logs_path) is False:
         print(f"No previous record found in {logs_path}")
         return None
-    paths = sorted(os.listdir(logs_path), key=os.path.getmtime)
-    paths_dict: Dict[int, Path] = {
-        int(path.name.split("_")[2]): path for path in paths
-    }
+    print(f"logs_path: {logs_path}")
+    files = os.listdir(logs_path)
+    paths = sorted(files)
+    paths_dict: Dict[int, Path] = {int(path.split("_")[2]): path for path in paths}
     if len(paths_dict) == 0:
         return None
-    latest_model_file_path: Optional[Path] = paths_dict[max(paths_dict.keys())]
+    latest_model_file_path: Optional[Path] = Path(os.path.join(logs_path, paths_dict[max(paths_dict.keys())]))
     return latest_model_file_path
 
 def get_env(wandb_run) -> gym.Env:
@@ -72,7 +73,7 @@ def get_env(wandb_run) -> gym.Env:
 
 def main():
     wandb_run = wandb.init(
-        project="Major_Map_Debug_ROAR_PY",
+        project="Debug_ROAR_PY",
         entity="roar",
         name="Testing",
         sync_tensorboard=True,
@@ -83,7 +84,7 @@ def main():
     env = get_env(wandb_run)
 
     models_path = f"models/{wandb_run.name}"
-    latest_model_path = find_latest_model(models_path)
+    latest_model_path = find_latest_model(Path(models_path))
     
     if latest_model_path is None:
         # create new models
@@ -96,23 +97,42 @@ def main():
         )
     else:
         # Load the model
-        print(latest_model_path)
-        model = SAC.load(
+        print(f"reloading from {type(latest_model_path)} {latest_model_path}\n\n\n\n")
+        model = SAC.load( 
             latest_model_path,
             env=env,
-            optimize_memory_usage=True,
-            replay_buffer_kwargs={"handle_timeout_termination": False}
+            # optimize_memory_usage=True,
+            # replay_buffer_kwargs={"handle_timeout_termination": False}
             **training_params
         )
 
+    model_save_freq = 2000
+    wandb_callback=WandbCallback(
+        gradient_save_freq = model_save_freq,
+        model_save_path = f"models/{wandb_run.name}",
+        verbose = 2,
+    )
+    checkpoint_callback = CheckpointCallback(
+        save_freq = model_save_freq,
+        verbose = 2,
+        save_path = f"{models_path}/logs"
+    )
+    event_callback = EveryNTimesteps(
+        n_steps = model_save_freq,
+        callback=checkpoint_callback
+    )
+
+    callbacks = CallbackList([
+        wandb_callback,
+        checkpoint_callback, 
+        event_callback
+    ])
+
     model.learn(
         total_timesteps=500_000,
-        callback=WandbCallback(
-            gradient_save_freq=2000,
-            model_save_path=f"models/{wandb_run.name}",
-            verbose=2,
-        ),
+        callback=callbacks,
         progress_bar=True,
+        reset_num_timesteps=False,
     )
 
 if __name__ == "__main__":
