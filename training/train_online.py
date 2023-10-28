@@ -106,7 +106,7 @@ def main():
             **training_params
         )
 
-    model_save_freq = 2000
+    model_save_freq = 5000
     wandb_callback=WandbCallback(
         gradient_save_freq = model_save_freq,
         model_save_path = f"models/{wandb_run.name}",
@@ -129,7 +129,7 @@ def main():
     ])
 
     model.learn(
-        total_timesteps=500_000,
+        total_timesteps=1e7,
         callback=callbacks,
         progress_bar=True,
         reset_num_timesteps=False,
