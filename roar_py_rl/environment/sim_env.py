@@ -110,7 +110,11 @@ class RoarRLSimEnv(RoarRLEnv):
             penalty = (penalty ** 1.4) / self.collision_threshold
             return -penalty
 
-        normalized_rew = self._delta_distance_travelled * 20.0
+        dist_to_projection = np.linalg.norm(self.location_sensor.get_last_gym_observation() - self._traced_projection_point.location)
+        if self._delta_distance_travelled <= 0:
+            normalized_rew = self._delta_distance_travelled * 20.0
+        else:
+            normalized_rew = self._delta_distance_travelled * 20.0 / (0.2 * dist_to_projection + 1.0)
         # if normalized_rew < 0:
         #     return np.exp(normalized_rew) # Gaussian-like penalty for going backwards
         # else:
@@ -122,6 +126,7 @@ class RoarRLSimEnv(RoarRLEnv):
             location = self.location_sensor.get_last_gym_observation()
         _last_traced_projection = self._traced_projection
         self._traced_projection = self.waypoints_tracer.trace_point(location, _last_traced_projection.waypoint_idx)
+        self._traced_projection_point = self.waypoints_tracer.get_interpolated_waypoint(self._traced_projection)
         self._delta_distance_travelled = self.waypoints_tracer.delta_distance_projection(_last_traced_projection, self._traced_projection)
 
     def _step(self, action: Any) -> None:
