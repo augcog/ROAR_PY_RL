@@ -20,6 +20,8 @@ from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimeste
 
 RUN_FPS= 20
 SUBSTEPS_PER_STEP = 2
+MODEL_SAVE_FREQ = 20_000
+VIDEO_SAVE_FREQ = 10_000
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
     #n_steps = 256 * RUN_FPS, #1024
@@ -67,15 +69,15 @@ def get_env(wandb_run) -> gym.Env:
     env = FlattenActionWrapper(env)
     env = gym.wrappers.TimeLimit(env, max_episode_steps=RUN_FPS*30)
     env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % 5000 == 0)
+    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % VIDEO_SAVE_FREQ == 0)
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
     return env
 
 def main():
     wandb_run = wandb.init(
-        project="Debug_ROAR_PY",
+        project="ROAR_PY_RL",
         entity="roar",
-        name="Testing",
+        name="Denser_Waypoint_Info",
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True
@@ -106,19 +108,18 @@ def main():
             **training_params
         )
 
-    model_save_freq = 5000
     wandb_callback=WandbCallback(
-        gradient_save_freq = model_save_freq,
+        gradient_save_freq = MODEL_SAVE_FREQ,
         model_save_path = f"models/{wandb_run.name}",
         verbose = 2,
     )
     checkpoint_callback = CheckpointCallback(
-        save_freq = model_save_freq,
+        save_freq = MODEL_SAVE_FREQ,
         verbose = 2,
         save_path = f"{models_path}/logs"
     )
     event_callback = EveryNTimesteps(
-        n_steps = model_save_freq,
+        n_steps = MODEL_SAVE_FREQ,
         callback=checkpoint_callback
     )
 

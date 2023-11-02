@@ -42,7 +42,7 @@ class RoarRLSimEnv(RoarRLEnv):
             velocimeter_sensor : RoarPyVelocimeterSensor,
             collision_sensor : RoarPyCollisionSensor,
             collision_threshold : float = 30.0,
-            waypoint_information_distances : Set[float] = set([-8.0, -5.0, -2.0, 1.0, 2.0, 5.0, 8.0, 10.0, 20.0]),
+            waypoint_information_distances : Set[float] = set([]),
             world: Optional[RoarPyWorld] = None,
             render_mode="rgb_array"
         ) -> None:
