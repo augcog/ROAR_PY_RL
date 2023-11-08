@@ -67,9 +67,9 @@ def get_env(wandb_run) -> gym.Env:
     env = asyncio.run(initialize_roar_env(control_timestep=1.0/RUN_FPS, physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP)))
     env = gym.wrappers.FlattenObservation(env)
     env = FlattenActionWrapper(env)
-    env = gym.wrappers.TimeLimit(env, max_episode_steps=RUN_FPS*3000)
+    env = gym.wrappers.TimeLimit(env, max_episode_steps=6000)
     env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % VIDEO_SAVE_FREQ == 0)
+    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_eval_{wandb_run.id}")
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
     return env
 
@@ -80,7 +80,6 @@ def main():
         name="Denser_Waypoint_Info",
         sync_tensorboard=True,
         monitor_gym=True,
-        save_code=True
     ) 
     
     env = get_env(wandb_run)
@@ -89,14 +88,8 @@ def main():
     latest_model_path = find_latest_model(Path(models_path))
     
     if latest_model_path is None:
-        # create new models
-        model = SAC(
-            "MlpPolicy",
-            env,
-            optimize_memory_usage=True,
-            replay_buffer_kwargs={"handle_timeout_termination": False},
-            **training_params
-        )
+        print("no model found!")
+        exit()
     else:
         # Load the model
         print(f"reloading from {type(latest_model_path)} {latest_model_path}\n\n\n\n")
@@ -108,33 +101,13 @@ def main():
             **training_params
         )
 
-    wandb_callback=WandbCallback(
-        gradient_save_freq = MODEL_SAVE_FREQ,
-        model_save_path = f"models/{wandb_run.name}",
-        verbose = 2,
-    )
-    checkpoint_callback = CheckpointCallback(
-        save_freq = MODEL_SAVE_FREQ,
-        verbose = 2,
-        save_path = f"{models_path}/logs"
-    )
-    event_callback = EveryNTimesteps(
-        n_steps = MODEL_SAVE_FREQ,
-        callback=checkpoint_callback
-    )
-
-    callbacks = CallbackList([
-        wandb_callback,
-        checkpoint_callback, 
-        event_callback
-    ])
-
-    model.learn(
-        total_timesteps=1e7,
-        callback=callbacks,
-        progress_bar=True,
-        reset_num_timesteps=False,
-    )
+    obs, info = env.reset()
+    while True:
+        action, _state = model.predict(obs, deterministic=False)
+        obs, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:    
+            print("mission failed")
+            break
 
 if __name__ == "__main__":
     nest_asyncio.apply()

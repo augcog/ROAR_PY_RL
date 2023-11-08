@@ -100,7 +100,11 @@ class RoarRLSimEnv(RoarRLEnv):
 
     @property
     def sensors_to_update(self) -> List[Any]:
-        return [self.location_sensor, self.roll_pitch_yaw_sensor, self.velocimeter_sensor, self.collision_sensor]
+        return [
+            sensor for sensor in
+            [self.location_sensor, self.roll_pitch_yaw_sensor, self.velocimeter_sensor, self.collision_sensor]
+            if sensor not in self.roar_py_actor.get_sensors()
+        ]
 
     def get_reward(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> SupportsFloat:
         collision_impulse : np.ndarray = self.collision_sensor.get_last_gym_observation()

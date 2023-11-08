@@ -99,7 +99,8 @@ async def initialize_roar_env(carla_host : str = "localhost", carla_port : int =
         velocimeter_sensor,
         collision_sensor,
         waypoint_information_distances=set([-10.0, 0.0, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 100.0]),
-        world = world
+        world = world, 
+        collision_threshold = 10.0
     )
     env = SimplifyCarlaActionFilter(env)
     env = gym.wrappers.FilterObservation(env, ["gyroscope", "waypoints_information", "local_velocimeter"])
