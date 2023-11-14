@@ -67,7 +67,7 @@ def get_env(wandb_run) -> gym.Env:
     env = asyncio.run(initialize_roar_env(control_timestep=1.0/RUN_FPS, physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP)))
     env = gym.wrappers.FlattenObservation(env)
     env = FlattenActionWrapper(env)
-    env = gym.wrappers.TimeLimit(env, max_episode_steps=6000)
+    # env = gym.wrappers.TimeLimit(env, max_episode_steps=6000)
     env = gym.wrappers.RecordEpisodeStatistics(env)
     env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_eval_{wandb_run.id}")
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
@@ -77,7 +77,7 @@ def main():
     wandb_run = wandb.init(
         project="ROAR_PY_RL",
         entity="roar",
-        name="Denser_Waypoint_Info",
+        name="DWFCLTL3",
         sync_tensorboard=True,
         monitor_gym=True,
     ) 
@@ -85,8 +85,8 @@ def main():
     env = get_env(wandb_run)
 
     models_path = f"models/{wandb_run.name}"
-    latest_model_path = find_latest_model(Path(models_path))
-    
+    #latest_model_path = find_latest_model(Path(models_path))
+    latest_model_path = Path(os.path.join(models_path, "logs", "rl_model_1099946_steps"))
     if latest_model_path is None:
         print("no model found!")
         exit()

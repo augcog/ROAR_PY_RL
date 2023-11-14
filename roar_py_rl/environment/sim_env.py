@@ -112,7 +112,7 @@ class RoarRLSimEnv(RoarRLEnv):
         if collision_impulse_norm >= self.collision_threshold:
             penalty = collision_impulse_norm - self.collision_threshold
             penalty = (penalty ** 1.4) / self.collision_threshold
-            return -penalty
+            return -penalty / 100000
 
         dist_to_projection = np.linalg.norm(self.location_sensor.get_last_gym_observation() - self._traced_projection_point.location)
         if self._delta_distance_travelled <= 0:

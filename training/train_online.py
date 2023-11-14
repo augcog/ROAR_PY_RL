@@ -1,7 +1,7 @@
 import gymnasium as gym
 from gymnasium.core import Env
 import numpy as np
-from stable_baselines3 import SAC
+from stable_baselines3 import SAC 
 from stable_baselines3.ppo.ppo import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecVideoRecorder
@@ -22,6 +22,9 @@ RUN_FPS= 20
 SUBSTEPS_PER_STEP = 2
 MODEL_SAVE_FREQ = 20_000
 VIDEO_SAVE_FREQ = 10_000
+TIME_LIMIT = RUN_FPS * 300
+run_name = "DWFCLTL3"
+
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
     #n_steps = 256 * RUN_FPS, #1024
@@ -35,7 +38,7 @@ training_params = dict(
     # vf_coef=0.5,
     # max_grad_norm=0.5,
     use_sde=True,
-    sde_sample_freq=RUN_FPS * 2,
+    sde_sample_freq = RUN_FPS * 2,
     # target_kl=None,
     # tensorboard_log=(Path(misc_params["model_directory"]) / "tensorboard").as_posix(),
     # create_eval_env=False,
@@ -67,9 +70,9 @@ def get_env(wandb_run) -> gym.Env:
     env = asyncio.run(initialize_roar_env(control_timestep=1.0/RUN_FPS, physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP)))
     env = gym.wrappers.FlattenObservation(env)
     env = FlattenActionWrapper(env)
-    env = gym.wrappers.TimeLimit(env, max_episode_steps=RUN_FPS*3000)
+    env = gym.wrappers.TimeLimit(env, max_episode_steps = TIME_LIMIT)
     env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}_{wandb_run.id}", step_trigger=lambda x: x % VIDEO_SAVE_FREQ == 0)
+    env = gym.wrappers.RecordVideo(env, f"videos/{wandb_run.name}", step_trigger=lambda x: x % VIDEO_SAVE_FREQ == 0)
     env = Monitor(env, f"logs/{wandb_run.name}_{wandb_run.id}", allow_early_resets=True)
     return env
 
@@ -77,7 +80,7 @@ def main():
     wandb_run = wandb.init(
         project="ROAR_PY_RL",
         entity="roar",
-        name="Denser_Waypoint_Info",
+        name=run_name,
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True
