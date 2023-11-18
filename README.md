@@ -2,8 +2,8 @@
 
 This repository is the implementation code of RL platform and a RL solution for [ROAR Simulation Race](https://roar.berkeley.edu/simulation-racing/) based on [ROAR_PY](https://github.com/augcog/ROAR_PY) platform. The solution is inherited from [ROAR-RL-Racer](https://github.com/amansrf/ROAR-RL-Racer) which runs on previous ROAR platform and you can find the technical blog [here](https://roar.berkeley.edu/roar-end-to-end-reinforcement-learning/).
 
-![straight](https://github.com/FHL-VIVE-Center-for-Enhanced-Reality/ROAR_PY_RL/blob/readme_branc/straight.gif)
-![turning](https://github.com/FHL-VIVE-Center-for-Enhanced-Reality/ROAR_PY_RL/blob/readme_branc/turning.gif)
+![straight](https://github.com/augcog/ROAR_PY_RL/blob/main/straight.gif)
+![turning](https://github.com/augcog/ROAR_PY_RL/blob/main/turning.gif)
 
 ### Setup
 Please follow the setup tutorial [here](https://roar.gitbook.io/roar_py_rl-documentation/installation) to install the dependencies.
@@ -26,7 +26,7 @@ The observation space provided to the agent involves:
     2. Then in each step we perform trace one by one, and storing them inside `waypoints_information` key in the final observation dict.
 
     A visualization of waypoint information is below, where the arrow represents the position and heading of the vehicle, the bule points represent centered waypoints, and the red points represent boundries. 
-    ![visualization of waypoint information](https://github.com/FHL-VIVE-Center-for-Enhanced-Reality/ROAR_PY_RL/blob/readme_branc/visual.png)
+    ![visualization of waypoint information](https://github.com/augcog/ROAR_PY_RL/blob/main/visual.png)
 
 #### Our solution
 The observation space active in our solution includes:
