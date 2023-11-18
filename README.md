@@ -6,16 +6,16 @@ This repository is the implementation code of RL platform and a RL solution for 
 ![turning](https://github.com/FHL-VIVE-Center-for-Enhanced-Reality/ROAR_PY_RL/blob/readme_branc/turning.gif)
 
 ### Setup
-Please follow the setup tutorial [here](https://roar.gitbook.io/roar_py_rl-documentation/installation) to install the dependancies.
+Please follow the setup tutorial [here](https://roar.gitbook.io/roar_py_rl-documentation/installation) to install the dependencies.
 
-Please Download the latest map from ROAR [official website](https://roar.berkeley.edu/berkeley-major-map/)
+Please download the latest maps from ROAR [official website](https://roar.berkeley.edu/berkeley-major-map/)
 
 ### Observation Space
 #### General
 The observation space provided to the agent involves:
-1. All sensor attached to the vehicle instance:
-    - Basically the RoarRLSimEnv will take in an instance of RoarPyActor and the observation space of the environment will be a superset of that RoarPyActor's `get_gym_observation_spec()`
-    - In Roar's internal RL code, we added the following sensors to the actor:
+1. All sensors attached to the vehicle instance:
+    - Basically the `RoarRLSimEnv` will take in an instance of `RoarPyActor` and the observation space of the environment will be a superset of that `RoarPyActor`'s `get_gym_observation_spec()`
+    - In ROAR's internal RL code, we added the following sensors to the actor:
         - local coordinate velocimeter
         - gyroscope (angular velocity sensor)
 
@@ -37,14 +37,14 @@ The observation space active in our solution includes:
 For more details, please refer to [Observation Space documentation](https://roar.gitbook.io/roar_py_rl-documentation/environment-details/sim-environments/observation-space)
 
 ### Action Space
-The action space of every RoarRLEnv would be identical to the return value of RoarPyActor.get_action_spec(). 
+The action space of every `RoarRLEnv` would be identical to the return value of `RoarPyActor.get_action_spec()`. 
 
 The action space provided to the agent involves:
-    - throttle
-    - steering
-    - brake
-    - hand_brake
-    - reverse
+- throttle
+- steering
+- brake
+- hand_brake
+- reverse
 
 For more details, please refer to [Action Space documentation](https://roar.gitbook.io/roar_py_rl-documentation/environment-details/action-space)
 
@@ -64,8 +64,8 @@ For detailed rewards caculation, please refer to [Reward Fucntion documentation]
 
 ### Train
 To run the training of our method, you need to:
-1. Modify wandb setup and other hyperparameters in `training/train_online.py`
-2. go into training folder and run the training script
+1. Modify wandb setup and other hyperparameters in `training/train_online.py`.
+2. Move into training folder and run the training script.
 ```bash
 cd training
 python train_online.py
