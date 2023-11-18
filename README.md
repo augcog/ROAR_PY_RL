@@ -1,4 +1,4 @@
-# Reniforcement Learning Paltform and sample solutions for Robot Open Autonomous Racing(ROAR) Simulation Race
+# Reniforcement Learning Platform and sample solutions for Robot Open Autonomous Racing(ROAR) Simulation Race
 
 This repository is the implementation code of RL platform and a RL solution for [ROAR Simulation Race](https://roar.berkeley.edu/simulation-racing/) based on [ROAR_PY](https://github.com/augcog/ROAR_PY) platform. The solution is inherited from [ROAR-RL-Racer](https://github.com/amansrf/ROAR-RL-Racer) which runs on previous ROAR platform and you can find the technical blog [here](https://roar.berkeley.edu/roar-end-to-end-reinforcement-learning/).
 
