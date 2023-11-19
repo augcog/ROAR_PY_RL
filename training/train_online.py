@@ -23,7 +23,7 @@ SUBSTEPS_PER_STEP = 2
 MODEL_SAVE_FREQ = 20_000
 VIDEO_SAVE_FREQ = 10_000
 TIME_LIMIT = RUN_FPS * 300
-run_name = "DWFCLTL3"
+run_name = "TRUNCATION_FIX"
 
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
@@ -96,8 +96,8 @@ def main():
         model = SAC(
             "MlpPolicy",
             env,
-            optimize_memory_usage=True,
-            replay_buffer_kwargs={"handle_timeout_termination": False},
+            # optimize_memory_usage=True,
+            replay_buffer_kwargs={"handle_timeout_termination": True},
             **training_params
         )
     else:

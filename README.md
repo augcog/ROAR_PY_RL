@@ -1,9 +1,13 @@
 # Reniforcement Learning Platform and Sample Solutions for Robot Open Autonomous Racing(ROAR) Simulation Race
 
+> Contributors: [Yunhao Cao](https://www.quantumcookie.xyz/), [Tianlun Zhang](https://www.linkedin.com/in/tianlun-zhang/), [Franco Huang](https://www.linkedin.com/in/franco-leonardo-huang-246b83221/), [Aman Saraf](https://www.linkedin.com/in/amansrf/), [Grace Zhang](https://www.linkedin.com/in/grace-z-439b1a1a7/).
+
 This repository is the implementation code of RL platform and a RL solution for [ROAR Simulation Race](https://roar.berkeley.edu/simulation-racing/) based on [ROAR_PY](https://github.com/augcog/ROAR_PY) platform. The solution is inherited from [ROAR-RL-Racer](https://github.com/amansrf/ROAR-RL-Racer) which runs on previous ROAR platform and you can find the technical blog [here](https://roar.berkeley.edu/roar-end-to-end-reinforcement-learning/).
 
-![straight](https://github.com/augcog/ROAR_PY_RL/blob/main/straight.gif)
-![turning](https://github.com/augcog/ROAR_PY_RL/blob/main/turning.gif)
+The current solution is trained and evaluated on the [Monza Map](https://roar.berkeley.edu/monza-map/).
+
+![straight](./straight.gif)
+![turning](./turning.gif)
 
 ### Setup
 Please follow the setup tutorial [here](https://roar.gitbook.io/roar_py_rl-documentation/installation) to install the dependencies.
