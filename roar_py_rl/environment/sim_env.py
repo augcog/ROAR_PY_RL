@@ -109,10 +109,11 @@ class RoarRLSimEnv(RoarRLEnv):
     def get_reward(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> SupportsFloat:
         collision_impulse : np.ndarray = self.collision_sensor.get_last_gym_observation()
         collision_impulse_norm = np.linalg.norm(collision_impulse)
-        if collision_impulse_norm >= self.collision_threshold:
-            penalty = collision_impulse_norm - self.collision_threshold
-            penalty = (penalty ** 1.4) / self.collision_threshold
-            return -penalty / 100000
+        
+        
+        collision_penalty = collision_impulse_norm / 10
+        if collision_impulse_norm > self.collision_threshold:
+            return -collision_penalty
 
         dist_to_projection = np.linalg.norm(self.location_sensor.get_last_gym_observation() - self._traced_projection_point.location)
         if self._delta_distance_travelled <= 0:
@@ -123,7 +124,7 @@ class RoarRLSimEnv(RoarRLEnv):
         #     return np.exp(normalized_rew) # Gaussian-like penalty for going backwards
         # else:
         #     return normalized_rew + 1
-        return normalized_rew
+        return normalized_rew - collision_penalty
     
     def _perform_waypoint_trace(self, location: Optional[np.ndarray] = None) -> None:
         if location is None:
@@ -134,9 +135,6 @@ class RoarRLSimEnv(RoarRLEnv):
         self._delta_distance_travelled = self.waypoints_tracer.delta_distance_projection(_last_traced_projection, self._traced_projection)
 
     def _step(self, action: Any) -> None:
-        if np.linalg.norm(self.collision_sensor.get_last_gym_observation()) > 0:
-            print("Collision detected!", self.collision_sensor.get_last_observation().impulse_normals)
-
         self._perform_waypoint_trace()
 
     def _reset(self) -> None:
@@ -146,8 +144,12 @@ class RoarRLSimEnv(RoarRLEnv):
     def is_terminated(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> bool:
         collision_impulse : np.ndarray = self.collision_sensor.get_last_gym_observation()
         collision_impulse_norm = np.linalg.norm(collision_impulse)
-        if collision_impulse_norm >= self.collision_threshold:
+        if collision_impulse_norm > 0:
+            print(f"Collision detected with impulse {collision_impulse_norm}", self.collision_sensor.get_last_observation().impulse_normals)
+        if collision_impulse_norm > self.collision_threshold:
+            print("Terminated due to collision")
             return True
+        
         return False
 
     def is_truncated(self, observation : Any, action : Any, info_dict : Dict[str, Any]) -> bool:

@@ -31,7 +31,7 @@ class RoarRLCarlaSimEnv(RoarRLSimEnv):
         # next_spawn_loc, next_spawn_rpy = next_spawn_loc.copy(), next_spawn_rpy.copy()
         # next_spawn_loc += np.array([0, 0, 2.0])
         
-        async def wait_for_world_ticks(spawn_ticks, wait_ticks : int) -> None:
+        async def wait_for_world_ticks(spawn_ticks : int, wait_ticks : int) -> None:
             for _ in range(spawn_ticks):
                 self.roar_py_actor.set_transform(next_spawn_loc, next_spawn_rpy)
                 self.roar_py_actor.set_linear_3d_velocity(np.zeros(3))
@@ -41,6 +41,6 @@ class RoarRLCarlaSimEnv(RoarRLSimEnv):
                 await self.roar_py_world.step()
         
         asyncio.get_event_loop().run_until_complete(
-            wait_for_world_ticks(5, 30)
+            wait_for_world_ticks(5, int(2.0 / self.roar_py_world.control_timestep))
         )
         

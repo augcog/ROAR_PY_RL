@@ -18,12 +18,12 @@ from env_util import initialize_roar_env
 from roar_py_rl_carla import FlattenActionWrapper
 from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, CallbackList, BaseCallback
 
-RUN_FPS= 20
-SUBSTEPS_PER_STEP = 2
-MODEL_SAVE_FREQ = 20_000
-VIDEO_SAVE_FREQ = 10_000
-TIME_LIMIT = RUN_FPS * 300
-run_name = "TRUNCATION_FIX"
+RUN_FPS=25
+SUBSTEPS_PER_STEP = 5
+MODEL_SAVE_FREQ = 50_000
+VIDEO_SAVE_FREQ = 20_000
+TIME_LIMIT = RUN_FPS * 3600
+run_name = "Denser_Waypoints_And_Collision_Detection"
 
 training_params = dict(
     learning_rate = 1e-5,  # be smaller 2.5e-4
@@ -84,7 +84,7 @@ def main():
         sync_tensorboard=True,
         monitor_gym=True,
         save_code=True
-    ) 
+    )
     
     env = get_env(wandb_run)
 
