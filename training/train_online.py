@@ -22,7 +22,7 @@ RUN_FPS=25
 SUBSTEPS_PER_STEP = 5
 MODEL_SAVE_FREQ = 50_000
 VIDEO_SAVE_FREQ = 20_000
-TIME_LIMIT = RUN_FPS * 3600
+TIME_LIMIT = RUN_FPS * 2 * 60
 run_name = "Denser_Waypoints_And_Collision_Detection"
 
 training_params = dict(
