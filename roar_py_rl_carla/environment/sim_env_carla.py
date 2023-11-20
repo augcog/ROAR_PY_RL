@@ -7,6 +7,7 @@ from typing import Any, Dict, SupportsFloat, Tuple, Optional
 import gymnasium as gym
 import numpy as np
 import asyncio
+import transforms3d as tr3d
 
 class FlattenActionWrapper(gym.ActionWrapper):
     def __init__(self, env: Env):
@@ -20,27 +21,52 @@ class RoarRLCarlaSimEnv(RoarRLSimEnv):
     def reset_vehicle(self) -> None:
         # assert isinstance(self.roar_py_actor, RoarPyCarlaVehicle)
         # assert isinstance(self.roar_py_world, RoarPyCarlaWorld)
-        
+        vehicle : RoarPyCarlaVehicle = self.roar_py_actor
+
         spawn_points = self.roar_py_world.spawn_points
         next_spawn_loc, next_spawn_rpy = spawn_points[np.random.randint(len(spawn_points))]
         next_spawn_loc, next_spawn_rpy = next_spawn_loc.copy(), next_spawn_rpy.copy()
-        next_spawn_loc += np.array([0, 0, 2.0])
+
+        rotated_extent = vehicle.bounding_box.extent.copy()
+        rotated_extent = np.linalg.inv(tr3d.euler.euler2mat(*vehicle.get_roll_pitch_yaw())) @ rotated_extent
+        next_spawn_loc += np.array([0,0,rotated_extent[2]+0.2])
+
+        print(f"Resetting vehicle to {next_spawn_loc} {next_spawn_rpy}")
 
         # next_spawn_wp = self.manuverable_waypoints[np.random.randint(len(self.manuverable_waypoints))]
         # next_spawn_loc, next_spawn_rpy = next_spawn_wp.location, next_spawn_wp.roll_pitch_yaw
         # next_spawn_loc, next_spawn_rpy = next_spawn_loc.copy(), next_spawn_rpy.copy()
         # next_spawn_loc += np.array([0, 0, 2.0])
         
-        async def wait_for_world_ticks(spawn_ticks : int, wait_ticks : int) -> None:
+        brake_action = {
+            "throttle": 0.0,
+            "steer": 0.0,
+            "brake": 1.0,
+            "hand_brake": 1.0,
+            "reverse": False
+        }
+
+        async def wait_for_world_ticks(spawn_ticks : int, wait_ticks : int) -> bool:
             for _ in range(spawn_ticks):
                 self.roar_py_actor.set_transform(next_spawn_loc, next_spawn_rpy)
                 self.roar_py_actor.set_linear_3d_velocity(np.zeros(3))
                 self.roar_py_actor.set_angular_velocity(np.zeros(3))
+                await self.roar_py_actor.apply_action(brake_action)
                 await self.roar_py_world.step()
             for _ in range(wait_ticks):
+                await self.roar_py_actor.apply_action(brake_action)
+                collision_data = await self.collision_sensor.receive_observation()
                 await self.roar_py_world.step()
+            
+            await self.roar_py_actor.apply_action(brake_action)
+            collision_data = await self.collision_sensor.receive_observation()
+            collision_impulse = np.linalg.norm(collision_data.convert_obs_to_gym_obs())
+            if (collision_impulse > self.collision_threshold):
+                return False
+            else:
+                return True
         
-        asyncio.get_event_loop().run_until_complete(
-            wait_for_world_ticks(5, int(2.0 / self.roar_py_world.control_timestep))
+        reset_completed = asyncio.get_event_loop().run_until_complete(
+            wait_for_world_ticks(5, int(1.0 / self.roar_py_world.control_timestep))
         )
-        
+        assert reset_completed
