@@ -80,3 +80,17 @@ The models are stored under `training/models` by default. After you have a train
 ```bash
 python training/eval_agent
 ```
+
+### List of References
+
+- [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)
+- [Soft Actor Critic for Discrete Action Settings](https://arxiv.org/abs/1910.07207)
+- [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/pdf/1812.05905.pdf)
+- [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
+- [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602)
+- [The Bellman Error is a Poor Replacement for Value Error](https://arxiv.org/abs/2201.12417)
+- [Correcting Robot Plans with Natural Language Feedback](https://arxiv.org/abs/2204.05186)
+- [Variable Decision-Frequency Option Critic](https://arxiv.org/abs/2212.04407)
+- [Decision Transformer - Reinforcement Learning via Sequence Modeling](https://arxiv.org/abs/2106.01345)
+- [Subwords as Skills Tokenization for Sparse-Reward Reinforcement Learning](https://arxiv.org/abs/2309.04459)
+- [Champion Level Drone Racing With DRL](https://www.nature.com/articles/s41586-023-06419-4)
