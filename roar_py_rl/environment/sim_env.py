@@ -117,9 +117,9 @@ class RoarRLSimEnv(RoarRLEnv):
 
         dist_to_projection = np.linalg.norm(self.location_sensor.get_last_gym_observation() - self._traced_projection_point.location)
         if self._delta_distance_travelled <= 0:
-            normalized_rew = self._delta_distance_travelled
+            normalized_rew = self._delta_distance_travelled * 10.0
         else:
-            normalized_rew = self._delta_distance_travelled / (0.2 * dist_to_projection + 1.0)
+            normalized_rew = self._delta_distance_travelled * 10.0 / (0.2 * dist_to_projection + 1.0)
         # if normalized_rew < 0:
         #     return np.exp(normalized_rew) # Gaussian-like penalty for going backwards
         # else:
