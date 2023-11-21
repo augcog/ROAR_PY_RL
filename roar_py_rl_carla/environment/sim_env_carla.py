@@ -53,14 +53,24 @@ class RoarRLCarlaSimEnv(RoarRLSimEnv):
                 self.roar_py_actor.set_angular_velocity(np.zeros(3))
                 await self.roar_py_actor.apply_action(brake_action)
                 await self.roar_py_world.step()
+                observation_task_async = asyncio.gather(
+                    self.roar_py_actor.receive_observation(),
+                    *[sensor.receive_observation() for sensor in self.sensors_to_update],
+                    *[sensor.receive_observation() for sensor in self.additional_sensors]
+                )
+                await observation_task_async
             for _ in range(wait_ticks):
                 await self.roar_py_actor.apply_action(brake_action)
-                collision_data = await self.collision_sensor.receive_observation()
                 await self.roar_py_world.step()
+                observation_task_async = asyncio.gather(
+                    self.roar_py_actor.receive_observation(),
+                    *[sensor.receive_observation() for sensor in self.sensors_to_update],
+                    *[sensor.receive_observation() for sensor in self.additional_sensors]
+                )
+                await observation_task_async
             
             await self.roar_py_actor.apply_action(brake_action)
-            collision_data = await self.collision_sensor.receive_observation()
-            collision_impulse = np.linalg.norm(collision_data.convert_obs_to_gym_obs())
+            collision_impulse = np.linalg.norm(self.collision_sensor.get_last_gym_observation())
             if (collision_impulse > self.collision_threshold):
                 return False
             else:

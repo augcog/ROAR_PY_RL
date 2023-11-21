@@ -1,5 +1,5 @@
 from typing import List, Optional
-from roar_py_interface import RoarPyActor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyRollPitchYawSensor, RoarPyWaypointsTracker, RoarPyWaypointsProjection
+from roar_py_interface import RoarPyActor, RoarPySensor, RoarPyWaypoint, RoarPyWorld, RoarPyLocationInWorldSensor, RoarPyCollisionSensor, RoarPyVelocimeterSensor, RoarPyRollPitchYawSensor, RoarPyWaypointsTracker, RoarPyWaypointsProjection
 from .base_env import RoarRLEnv
 from typing import Any, Dict, SupportsFloat, Tuple, Optional, Set
 import gymnasium as gym
@@ -99,7 +99,7 @@ class RoarRLSimEnv(RoarRLEnv):
         return NotImplementedError
 
     @property
-    def sensors_to_update(self) -> List[Any]:
+    def sensors_to_update(self) -> List[RoarPySensor]:
         return [
             sensor for sensor in
             [self.location_sensor, self.roll_pitch_yaw_sensor, self.velocimeter_sensor, self.collision_sensor]
@@ -117,7 +117,7 @@ class RoarRLSimEnv(RoarRLEnv):
 
         dist_to_projection = np.linalg.norm(self.location_sensor.get_last_gym_observation() - self._traced_projection_point.location)
         if self._delta_distance_travelled <= 0:
-            normalized_rew = self._delta_distance_travelled * 10.0
+            normalized_rew = self._delta_distance_travelled * 10.0 * (0.2 * dist_to_projection + 1.0)
         else:
             normalized_rew = self._delta_distance_travelled * 10.0 / (0.2 * dist_to_projection + 1.0)
         # if normalized_rew < 0:

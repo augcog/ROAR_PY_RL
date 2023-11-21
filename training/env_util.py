@@ -45,7 +45,7 @@ async def initialize_roar_env(
     carla_port : int = 2000, 
     control_timestep : float = 0.05, 
     physics_timestep : float = 0.01,
-    waypoint_information_distances : list = [-i for i in range(0, 10, 2)] + [i for i in range(2,101,2)]
+    waypoint_information_distances : list = [2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 80.0, 100.0]
 ):
     carla_client = carla.Client(carla_host, carla_port)
     carla_client.set_timeout(15.0)
