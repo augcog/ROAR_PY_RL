@@ -17,9 +17,10 @@ from typing import Dict, SupportsFloat, Union
 from env_util import initialize_roar_env
 from roar_py_rl_carla import FlattenActionWrapper
 from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, CallbackList, BaseCallback
+import tqdm
 
-RUN_FPS= 20
-SUBSTEPS_PER_STEP = 2
+RUN_FPS= 25
+SUBSTEPS_PER_STEP = 5
 MODEL_SAVE_FREQ = 20_000
 VIDEO_SAVE_FREQ = 10_000
 training_params = dict(
@@ -64,7 +65,12 @@ def find_latest_model(root_path: Path) -> Optional[Path]:
     return latest_model_file_path
 
 def get_env(wandb_run) -> gym.Env:
-    env = asyncio.run(initialize_roar_env(control_timestep=1.0/RUN_FPS, physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP)))
+    env = asyncio.run(initialize_roar_env(
+        control_timestep=1.0/RUN_FPS, 
+        physics_timestep=1.0/(RUN_FPS*SUBSTEPS_PER_STEP),
+        image_width=1920,
+        image_height=1080
+    ))
     env = gym.wrappers.FlattenObservation(env)
     env = FlattenActionWrapper(env)
     # env = gym.wrappers.TimeLimit(env, max_episode_steps=6000)
@@ -77,7 +83,7 @@ def main():
     wandb_run = wandb.init(
         project="ROAR_PY_RL",
         entity="roar",
-        name="DWFCLTL3",
+        name="Denser_Waypoints_And_Collision_Detection",
         sync_tensorboard=True,
         monitor_gym=True,
     ) 
@@ -85,8 +91,8 @@ def main():
     env = get_env(wandb_run)
 
     models_path = f"models/{wandb_run.name}"
-    #latest_model_path = find_latest_model(Path(models_path))
-    latest_model_path = Path(os.path.join(models_path, "logs", "rl_model_1099946_steps"))
+    latest_model_path = find_latest_model(Path(models_path))
+    #latest_model_path = Path(os.path.join(models_path, "logs", "rl_model_1099946_steps"))
     if latest_model_path is None:
         print("no model found!")
         exit()
@@ -102,12 +108,16 @@ def main():
         )
 
     obs, info = env.reset()
-    while True:
-        action, _state = model.predict(obs, deterministic=False)
-        obs, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:    
-            print("mission failed")
-            break
+    try:
+        for i in tqdm.trange(3600*RUN_FPS):
+            action, _state = model.predict(obs, deterministic=False)
+            obs, reward, terminated, truncated, info = env.step(action)
+            if terminated or truncated:    
+                print("mission failed")
+                break
+    finally:
+        env.close()
+        return
 
 if __name__ == "__main__":
     nest_asyncio.apply()

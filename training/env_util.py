@@ -45,7 +45,9 @@ async def initialize_roar_env(
     carla_port : int = 2000, 
     control_timestep : float = 0.05, 
     physics_timestep : float = 0.01,
-    waypoint_information_distances : list = [2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 80.0, 100.0]
+    waypoint_information_distances : list = [2.0, 5.0, 10.0, 15.0, 20.0, 30.0, 40.0, 50.0, 80.0, 100.0],
+    image_width : int = 400,
+    image_height : int = 200
 ):
     carla_client = carla.Client(carla_host, carla_port)
     carla_client.set_timeout(15.0)
@@ -84,8 +86,8 @@ async def initialize_roar_env(
         roar_py_interface.RoarPyCameraSensorDataRGB, # Specify what kind of data you want to receive
         np.array([-2.0 * vehicle.bounding_box.extent[0], 0.0, 3.0 * vehicle.bounding_box.extent[2]]), # relative position
         np.array([0, 10/180.0*np.pi, 0]), # relative rotation
-        image_width=400,
-        image_height=200
+        image_width=image_width,
+        image_height=image_height
     )
     # occupancy_map_sensor = vehicle.attach_occupancy_map_sensor(
     #     50,
