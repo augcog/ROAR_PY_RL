@@ -9,6 +9,8 @@ The current solution is trained and evaluated on the [Monza Map](https://roar.be
 ![straight](./straight.gif)
 ![turning](./turning.gif)
 
+[Click here for a longer video (5 mins)](https://youtu.be/NHRImZHa2rk?si=6Auj3D62ioQ3612B)
+
 ### Setup
 Please follow the setup tutorial [here](https://roar.gitbook.io/roar_py_rl-documentation/installation) to install the dependencies.
 
